@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# notes-popup — opens the Neovim notes manager in its own small terminal window.
+# Put it in your PATH (e.g. ~/.local/bin/notes-popup) and `chmod +x` it.
+#
+# Optional: TERMINAL=kitty notes-popup   (force a terminal)
+#           COLS=110 ROWS=30 notes-popup (change the window size, in characters)
+
+COLS="${COLS:-100}"
+ROWS="${ROWS:-28}"
+CLASS="notes-popup"      # use this class/app-id in window-manager rules (float + center)
+CMD=(nvim +NotesApp)
+
+# launch detached and silent, so the window outlives the shell and no terminal noise leaks out
+run() { setsid -f "$@" >/dev/null 2>&1; }
+
+term="${TERMINAL:-}"
+if [ -z "$term" ]; then
+  for t in kitty ghostty alacritty wezterm foot gnome-terminal; do
+    command -v "$t" >/dev/null 2>&1 && { term="$t"; break; }
+  done
+fi
+
+case "$term" in
+  kitty)          run kitty --class "$CLASS" -o remember_window_size=no \
+                    -o initial_window_width="${COLS}c" -o initial_window_height="${ROWS}c" "${CMD[@]}" ;;
+  ghostty)        run ghostty --class="$CLASS" --window-width="$COLS" --window-height="$ROWS" \
+                    -e "${CMD[@]}" ;;
+  alacritty)      run alacritty --class "$CLASS" -o window.dimensions.columns="$COLS" \
+                    -o window.dimensions.lines="$ROWS" -e "${CMD[@]}" ;;
+  wezterm)        run wezterm --config initial_cols="$COLS" --config initial_rows="$ROWS" \
+                    start --class "$CLASS" --always-new-process -- "${CMD[@]}" ;;
+  foot)           run foot --app-id "$CLASS" --window-size-chars="${COLS}x${ROWS}" "${CMD[@]}" ;;
+  gnome-terminal) run gnome-terminal --class="$CLASS" --geometry="${COLS}x${ROWS}" -- "${CMD[@]}" ;;
+  *) echo "notes-popup: no supported terminal found (set TERMINAL=...)" >&2; exit 1 ;;
+esac
